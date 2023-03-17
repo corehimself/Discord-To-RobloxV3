@@ -1,16 +1,17 @@
-const fs = require('node:fs');
-const path = require('node:path');
-
+const { botToken } = require('./Src/Credentials/Config.json');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMessageReactions, GatewayIntentBits.MessageContent] });
-const { botToken } = require('./Src/Credentials/Config.json');
-client.commands = new Collection();
+
+const fs = require('node:fs');
+const path = require('node:path');
 
 const commandsPath = path.join(__dirname, 'Src', 'MessageCommands');
 const eventsPath = path.join(__dirname, 'Src', 'Events');
 
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+
+client.commands = new Collection();
 
 for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
@@ -35,10 +36,8 @@ for (const file of eventFiles) {
 }
 
 async function startApp() {
-    console.log("Starting...");
     try {
         await client.login(botToken);
-        console.log(`Successfully logged in ${client.user.tag}`);
     } catch (error) {
         console.log(`Failed to login | ${error}`);
         process.exit(1);
@@ -46,3 +45,5 @@ async function startApp() {
 }
 
 startApp();
+
+module.exports = { client }

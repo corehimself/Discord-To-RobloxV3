@@ -1,16 +1,16 @@
-const { Collection, EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { universeID, datastoreApiKey, logChannelID } = require('../Credentials/Config.json');
+const { Collection, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder } = require('discord.js'); 
+const { logChannelID } = require('../Credentials/Config.json'); 
+const { getAvatarUrl } = require('../Api/profilePic.js'); 
+const { checkName } = require('../Api/checkName.js'); 
 const { handleDatastoreAPI } = require('../Api/datastoreAPI');
-const { getAvatarUrl } = require('../Api/profilePic.js');
-const { checkName } = require('../Api/checkName.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('kick')
-        .setDescription('Kick a specified user from in game')
+        .setName('warn')
+        .setDescription('Warn a specified user in game')
         .addStringOption(option =>
             option.setName('category')
-                .setDescription('Kick user by Username or User ID')
+                .setDescription('Warn user by Username or User ID')
                 .setRequired(true)
                 .addChoices(
                     { name: 'Username', value: 'username' },
@@ -19,23 +19,23 @@ module.exports = {
 
         .addStringOption(option =>
             option.setName('userorid')
-                .setDescription('Username/ID to kick')
+                .setDescription('Username/ID to warn')
                 .setRequired(true))
 
         .addStringOption(option =>
             option.setName('reason')
-                .setDescription('Reason for kicking')
+                .setDescription('Reason for warning')
                 .setRequired(true))
 
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
     async execute(interaction) {
         const logChan = await interaction.client.channels.fetch(logChannelID);
         const userOrID = interaction.options.getString('category');
-        const userToKick = interaction.options.getString('userorid');
+        const userToWarn = interaction.options.getString('userorid');
         const reason = interaction.options.getString('reason');
 
         try {
-            const robloxData = await checkName(userToKick, userOrID);
+            const robloxData = await checkName(userToWarn, userOrID);
 
             if (robloxData.id) {
                 const userId = robloxData.id;
@@ -43,9 +43,9 @@ module.exports = {
 
                 const confirmEmbed = new EmbedBuilder()
                     .setColor('#eb4034')
-                    .setTitle('Confirm Kick')
+                    .setTitle('Confirm Warn')
                     .setThumbnail(avatarUrl)
-                    .setDescription(`Are you sure you want to kick **${userToKick}**?\n\n**Reason:**\n${reason}`)
+                    .setDescription(`Are you sure you want to warn **${userToWarn}**?\n\n**Reason:**\n${reason}`)
                     .setTimestamp();
 
                 const message = await interaction.reply({ embeds: [confirmEmbed], fetchReply: true });
@@ -65,58 +65,63 @@ module.exports = {
                             if (message.reactions.cache.size > 0) {
                                 message.reactions.removeAll().catch(error => console.error('Failed to clear reactions: ', error));
                             }
-                            
-                            const method = "Kick";
+
+                            const method = "Warn";
                             const entryKey = `user_${robloxData.id}`;
+
                             const data = {
                                 method: method,
                                 reason: reason
-                            }
+                            };
 
                             try {
                                 const response = await handleDatastoreAPI(entryKey, data);
                                 const color = response.success ? '#00ff44' : '#eb4034';
-                        
-                                const embed = new EmbedBuilder()
+                                const warnEmbed = new EmbedBuilder()
                                     .setColor(color)
                                     .setTitle(`${method} ${response ? 'Successful' : 'Failed'}`)
                                     .setThumbnail(avatarUrl)
-                                    .addFields({ name: 'Username', value: `${robloxData.name}` })
-                                    .addFields({ name: 'User ID', value: `${robloxData.id}` })
+                                    .setDescription(`**${userToWarn}** has been warned`)
                                     .setTimestamp();
 
                                 const logEmbed = new EmbedBuilder()
                                     .setColor('#eb4034')
                                     .setTitle('Command Executed')
                                     .addFields({ name: 'Administrator', value: `${interaction.user}` })
-                                    .addFields({ name: 'Action', value: `${method} ${userToKick} ${reason}` })
+                                    .addFields({ name: 'Action', value: `${method} ${userToWarn} ${reason}` })
                                     .setThumbnail(interaction.user.displayAvatarURL())
                                     .setTimestamp();
-                        
+
                                 if (message) {
-                                    message.edit({ embeds: [embed] });
-                                    if (logChan) {
-                                        logChan.send({ embeds: [logEmbed] });
-                                    } else {
-                                        console.log("Make sure to set a log channel!");
-                                    }
+                                    message.edit({ embeds: [warnEmbed] });
+
+                                if (logChan) {
+                                    logChan.send({ embeds: [logEmbed] });
                                 } else {
+                                    console.log("Make sure to set a log channel!");
+                                }
+                                }
+                                else {
                                     return console.error("No message detected");
                                 }
-                            } catch (error) {
-                                return console.error(`Datastore API | ${error}`);
                             }
+                            catch (error) {
+                                return console.error(error);
+                            }
+                            // TODO: Add warn to database
                         } else {
                             if (message.reactions.cache.size > 0) {
                                 message.reactions.removeAll().catch(error => console.error('Failed to clear reactions: ', error));
                             }
+
                             const updatedEmbed = {
                                 title: 'Discord <-> Roblox System',
                                 color: parseInt('00ff44', 16),
                                 fields: [
-                                    { name: 'Kick Cancelled', value: 'Cancelled the kick process'}
+                                    { name: 'Warn Cancelled', value: 'Cancelled the warn process'}
                                 ]
                             };
+
                             await message.edit({ embeds: [updatedEmbed] });
                         }
                     })
@@ -133,15 +138,16 @@ module.exports = {
                                 ]
                             };
                             message.edit({ embeds: [timeoutEmbed] });
-                        } else {
+                        }
+                        else {
                             console.error(`Error awaiting reactions: ${error}`);
                             interaction.followUp('An error occurred while awaiting reactions.');
                         }
                     });
-            } else {
-                await interaction.reply('Unable to find that user on Roblox.');
-            }
-        } catch (error) {
+                } else {
+                    await interaction.reply('Unable to find that user on Roblox.');
+                }
+            } catch (error) {
             if (!interaction.deferred && !interaction.replied) {
                 await interaction.reply('An error occurred while trying to fetch data from the Roblox API.');
             }

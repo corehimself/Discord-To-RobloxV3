@@ -1,7 +1,8 @@
 const { Collection, EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { universeID, datastoreApiKey, logChannelID } = require('../Credentials/Config.json');
-const axios = require('axios').default;
-const crypto = require('crypto');
+const { handleDatastoreAPI } = require('../Api/datastoreAPI');
+const { getAvatarUrl } = require('../Api/profilePic.js');
+const { checkName } = require('../Api/checkName.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -20,6 +21,11 @@ module.exports = {
             option.setName('input')
                 .setDescription('Username/ID to ban')
                 .setRequired(true))
+
+        .addStringOption(option =>
+            option.setName('reason')
+                .setDescription('Reason for kicking')
+                .setRequired(true))
         
         .addIntegerOption(option =>
             option.setName('time')
@@ -37,42 +43,28 @@ module.exports = {
                     { name: 'Month', value: 'mo' },
                     { name: 'Year', value: 'yr' },
                 ))
-        .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
-
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
     async execute(interaction) {
         const logChan = await interaction.client.channels.fetch(logChannelID);
         const userOrID = interaction.options.getString('category');
         const userToBan = interaction.options.getString('input');
+        const reason = interaction.options.getString('reason');
         const timeToBan = interaction.options.getInteger('time');
-        let combinedTime = timeToBan && lengthToBan ? timeToBan + lengthToBan : 'Permanent';
         const lengthToBan = interaction.options.getString('length');
-        let baseURL = "";
-
-        if (userOrID === 'username') {
-            baseURL = `https://users.roblox.com/v1/usernames/users`;
-        } else {
-            baseURL = `https://api.roblox.com/users/${userToBan}`;
-        }
-
-        let body = {
-            "usernames": [userToBan],
-            "excludeBannedUsers": true
-        }
+        let combinedTime = timeToBan && lengthToBan ? timeToBan + lengthToBan : 'Permanent';
 
         try {
-            const robloxResponse = await axios.post(baseURL, body);
-            const robloxData = robloxResponse.data.data[0];
+            const robloxData = await checkName(userToBan, userOrID);
 
             if (robloxData.id) {
                 const userId = robloxData.id;
-                const thumbnailResponse = await axios.get(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=420x420&format=Png&isCircular=false`);
-                const avatarUrl = thumbnailResponse.data.data[0].imageUrl;
+                const avatarUrl = await getAvatarUrl(userId);
 
                 const confirmEmbed = new EmbedBuilder()
                     .setColor('#eb4034')
                     .setTitle('Confirm Ban')
                     .setThumbnail(avatarUrl)
-                    .setDescription(`Are you sure you want to ban **${userToBan}** for **${combinedTime}** ?`)
+                    .setDescription(`Are you sure you want to ban **${userToBan}**?\n\nTime:\n**${combinedTime}**\n\nReason:\n**${reason}**`)
                     .setTimestamp();
 
                 const message = await interaction.reply({ embeds: [confirmEmbed], fetchReply: true });
@@ -94,30 +86,12 @@ module.exports = {
                             }
                             
                             const method = "Ban";
-                            const entryKey = `user_${robloxData.Id}`;
-                            const tbl = {method: method, banEndTime: {timeToBan, lengthToBan}}
-                            const JSONValue = await JSON.stringify({ method: method, time: combinedTime });
-                            const ConvertAdd = await crypto.createHash("md5").update(JSONValue).digest("base64");
+                            const entryKey = `user_${robloxData.id}`;
+                            const data = { method: method, time: combinedTime, reason: reason }
 
                             try {
-                                const response = await axios.post(
-                                    `https://apis.roblox.com/datastores/v1/universes/${universeID}/standard-datastores/datastore/entries/entry`, JSONValue, {
-                                        params: {
-                                            'datastoreName': 'DTRD',
-                                            'entryKey': entryKey,
-                                            'entryValue': tbl,
-                                        },
-                                        headers: {
-                                            'x-api-key': datastoreApiKey,
-                                            'content-md5': ConvertAdd,
-                                            'content-type': 'application/json',
-                                        },
-                                    }
-                                );
-                        
-                                const color = response && response.status >= 200 && response.status <= 299 ?
-                                    '#00ff44' :
-                                    '#eb4034';
+                                const response = await handleDatastoreAPI(entryKey, data);
+                                const color = response.success ? '#00ff44' : '#eb4034';
                         
                                 const embed = new EmbedBuilder()
                                     .setColor(color)
@@ -131,7 +105,7 @@ module.exports = {
                                     .setColor('#eb4034')
                                     .setTitle('Command Executed')
                                     .addFields({ name: 'Administrator', value: `${interaction.user}` })
-                                    .addFields({ name: 'Action', value: `${method} ${userToBan}` })
+                                    .addFields({ name: 'Action', value: `${method} ${userToBan} **${reason}** **${combinedTime}**` })
                                     .setThumbnail(interaction.user.displayAvatarURL())
                                     .setTimestamp();
 
@@ -149,12 +123,30 @@ module.exports = {
                                 return console.error(`Datastore API | ${error}`);
                             }
                         } else {
-                            return interaction.followUp('Cancelled');
+                            if (message.reactions.cache.size > 0) {
+                                message.reactions.removeAll().catch(error => console.error('Failed to clear reactions: ', error));
+                            }
+                            const updatedEmbed = {
+                                title: 'Discord <-> Roblox System',
+                                color: parseInt('00ff44', 16),
+                                fields: [{ name: 'Ban Cancelled', value: 'Cancelled the ban process' }]
+                            };
+                            await message.edit({ embeds: [updatedEmbed] });
                         }
                     })
                     .catch(error => {
                         if (error instanceof Collection) {
-                            interaction.followUp('Timed out.');
+                            if (message.reactions.cache.size > 0) {
+                                message.reactions.removeAll().catch(error => console.error('Failed to clear reactions: ', error));
+                            }
+                            const timeoutEmbed = {
+                                title: 'Discord <-> Roblox System',
+                                color: parseInt('00ff44', 16),
+                                fields: [
+                                    { name: 'Timeout', value: 'Timed out'}
+                                ]
+                            };
+                            message.edit({ embeds: [timeoutEmbed] });
                         } else {
                             console.error(`Error awaiting reactions: ${error}`);
                             interaction.followUp('An error occurred while awaiting reactions.');
@@ -164,8 +156,9 @@ module.exports = {
                 await interaction.reply('Unable to find that user on Roblox.');
             }
         } catch (error) {
+            console.log("ERR | ", error);
             if (!interaction.deferred && !interaction.replied) {
-                await interaction.reply('An error occurred while trying to fetch data from the Roblox API.');
+                await interaction.reply({ content: `An error occurred while trying to ban that user.\n\n**Error:**\n${error.data}` });
             }
         }
     }

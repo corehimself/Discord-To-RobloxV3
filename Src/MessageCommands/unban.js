@@ -1,7 +1,8 @@
 const { Collection, EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { universeID, logChannelID, datastoreApiKey  } = require('../Credentials/Config.json');
-const axios = require('axios').default;
-const crypto = require('crypto');
+const { handleDatastoreAPI } = require('../Api/datastoreAPI');
+const { getAvatarUrl } = require('../Api/profilePic.js');
+const { checkName } = require('../Api/checkName.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -21,33 +22,18 @@ module.exports = {
                 .setDescription('Username/ID to unban')
                 .setRequired(true))
 
-        .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
-
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
     async execute(interaction) {
         const logChan = await interaction.client.channels.fetch(logChannelID);
         const userOrID = interaction.options.getString('category');
         const userToUnban = interaction.options.getString('input');
-        let baseURL = "";
-
-        if (userOrID === 'username') {
-            baseURL = `https://users.roblox.com/v1/usernames/users`;
-        } else {
-            baseURL = `https://api.roblox.com/users/${userToUnban}`;
-        }
-
-        let body = {
-            "usernames": [userToUnban],
-            "excludeBannedUsers": true
-        }
 
         try {
-            const robloxResponse = await axios.post(baseURL, body);
-            const robloxData = robloxResponse.data.data[0];
+            const robloxData = await checkName(userToUnban, userOrID);
 
             if (robloxData.id) {
                 const userId = robloxData.id;
-                const thumbnailResponse = await axios.get(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=420x420&format=Png&isCircular=false`);
-                const avatarUrl = thumbnailResponse.data.data[0].imageUrl;
+                const avatarUrl = await getAvatarUrl(userId);
 
                 const confirmEmbed = new EmbedBuilder()
                     .setColor('#eb4034')
@@ -76,27 +62,13 @@ module.exports = {
                             
                             const method = "Unban";
                             const entryKey = `user_${robloxData.id}`;
-                            const JSONValue = await JSON.stringify({ method });
-                            const ConvertAdd = await crypto.createHash("md5").update(JSONValue).digest("base64");
+                            const data = {
+                                method: method
+                            }
 
                             try {
-                                const response = await axios.post(
-                                    `https://apis.roblox.com/datastores/v1/universes/${universeID}/standard-datastores/datastore/entries/entry`, JSONValue, {
-                                        params: {
-                                            'datastoreName': 'DTRD',
-                                            'entryKey': entryKey
-                                        },
-                                        headers: {
-                                            'x-api-key': datastoreApiKey,
-                                            'content-md5': ConvertAdd,
-                                            'content-type': 'application/json',
-                                        },
-                                    }
-                                );
-                        
-                                const color = response && response.status >= 200 && response.status <= 299 ?
-                                    '#00ff44' :
-                                    '#eb4034';
+                                const response = await handleDatastoreAPI(entryKey, data);
+                                const color = response.success ? '#00ff44' : '#eb4034';
                         
                                 const embed = new EmbedBuilder()
                                     .setColor(color)
@@ -128,12 +100,32 @@ module.exports = {
                                 return console.error(`Datastore API | ${error}`);
                             }
                         } else {
-                            return interaction.followUp('Cancelled');
+                            if (message.reactions.cache.size > 0) {
+                                message.reactions.removeAll().catch(error => console.error('Failed to clear reactions: ', error));
+                            }
+                            const updatedEmbed = {
+                                title: 'Discord <-> Roblox System',
+                                color: parseInt('00ff44', 16),
+                                fields: [
+                                    { name: 'Unban Cancelled', value: 'Cancelled the unban process'}
+                                ]
+                            };
+                            await message.edit({ embeds: [updatedEmbed] });
                         }
                     })
                     .catch(error => {
                         if (error instanceof Collection) {
-                            interaction.followUp('Timed out.');
+                            if (message.reactions.cache.size > 0) {
+                                message.reactions.removeAll().catch(error => console.error('Failed to clear reactions: ', error));
+                            }
+                            const timeoutEmbed = {
+                                title: 'Discord <-> Roblox System',
+                                color: parseInt('00ff44', 16),
+                                fields: [
+                                    { name: 'Timeout', value: 'Timed out'}
+                                ]
+                            };
+                            message.edit({ embeds: [timeoutEmbed] });
                         } else {
                             console.error(`Error awaiting reactions: ${error}`);
                             interaction.followUp('An error occurred while awaiting reactions.');
