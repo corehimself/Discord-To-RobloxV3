@@ -2,11 +2,7 @@
 Make sure to follow the tutorial on DevForum found [here](https://devforum.roblox.com/t/v3-discord-to-roblox-ban-bot-100-free-stable-datastore-support-nodejs/2206142)
 
 
-`logChannelID` - Your channel logging ID here
-
 `botToken` - Your Discord Bot Token Here
-
-`universeID` - [Click your game, universeID in link](https://create.roblox.com/creations)
 
 [Image Example](https://i.imgur.com/vNdAwg5.png)
 
@@ -15,6 +11,12 @@ Make sure to follow the tutorial on DevForum found [here](https://devforum.roblo
 `clientId` - Your Discord Bot Client ID
 
 `guildId` - Your Discord Guild ID
+
+`universeID` - [Click your game, universeID in link](https://create.roblox.com/creations)
+
+`logChannelID` - DO NOT TOUCH, set by the /setup command
+
+`appChannelID` - DO NOT TOUCH, set by the /setup command
 
 Please report any uncaught errors in `Issues`.
 
