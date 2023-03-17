@@ -2,7 +2,7 @@ const { Collection, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder } = r
 const { logChannelID } = require('../Credentials/Config.json'); 
 const { getAvatarUrl } = require('../Api/profilePic.js'); 
 const { checkName } = require('../Api/checkName.js'); 
-const { handleDatastoreAPI } = require('../Api/datastoreAPI');
+const { handleDatastoreAPI } = require('../Api/datastoreApi.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
