@@ -22,4 +22,7 @@ Please report any uncaught errors in `Issues`.
 
 Support me and help fund other projects by donating via CashApp: `$kinqeli21`
 
+**Contact Information**
+The quickest way to contact me is through [discord](https://discord.com/invite/RuK6c5zx)
+
 **Made by** [corehimself](https://www.roblox.com/users/2731068564/profile)
