@@ -1,5 +1,5 @@
 const { Collection, EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { universeID, logChannelID, datastoreApiKey  } = require('../Credentials/Config.json');
+const { logChannelID  } = require('../Credentials/Config.json');
 const { handleDatastoreAPI } = require('../Api/datastoreAPI');
 const { getAvatarUrl } = require('../Api/profilePic.js');
 const { checkName } = require('../Api/checkName.js');

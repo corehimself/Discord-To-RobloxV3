@@ -26,6 +26,4 @@ async function checkName(userToCheck, userOrID) {
   }
 }
 
-module.exports = {
-  checkName
-};
+module.exports = { checkName };

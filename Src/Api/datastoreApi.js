@@ -26,6 +26,4 @@ async function handleDatastoreAPI(entryKey, data) {
   }
 }
 
-module.exports = {
-  handleDatastoreAPI
-};
+module.exports = { handleDatastoreAPI };

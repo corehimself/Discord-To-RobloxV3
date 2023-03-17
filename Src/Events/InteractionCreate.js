@@ -1,5 +1,5 @@
 const { Client, EmbedBuilder, Events, GatewayIntentBits } = require('discord.js');
-const { handleDatastoreAPI } = require('../Api/datastoreAPI');
+const { handleDatastoreAPI } = require('../Api/datastoreApi.js');
 const { checkName } = require('../Api/checkName.js');
 
 const Config = require('../Credentials/Config.json');
@@ -93,7 +93,7 @@ module.exports = {
 										}
 
 										const updatedEmbed = {
-											title: 'Discord <-> Roblox Ban System',
+											title: 'Discord <-> Roblox System',
 											color: parseInt('00ff44', 16),
 											fields: [
 											  { name: 'Application', value: `Successfully Unbanned **${username}**` },

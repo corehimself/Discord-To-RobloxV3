@@ -1,6 +1,5 @@
 const { ActionRowBuilder, ModalBuilder, PermissionsBitField, TextInputBuilder, TextInputStyle } = require('discord.js');
 
-
 module.exports = {
     name: 'submitAppeal',
     async execute(interaction) {
