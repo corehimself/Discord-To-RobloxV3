@@ -1,11 +1,6 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const fs = require('node:fs');
 
-function requireUncached(module) {
-  delete require.cache[require.resolve(module)];
-  return require(module);
-}
-
 module.exports = {
   name: 'unbanModal',
   async execute(interaction) {
