@@ -1,4 +1,4 @@
-local DTR = require(script.Parent["DTR v3.2.1"]);
+local DTR = require(script.Parent["DTR v3.2.2"]);
 
 function onPlayerAdded(plr)
 	DTR.CheckPlayer(plr);
