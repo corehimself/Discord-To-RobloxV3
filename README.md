@@ -1,4 +1,4 @@
-## Discord-To-Roblox V3.2.1
+## Discord-To-Roblox V3.2.2
 Make sure to follow the tutorial on DevForum found [here](https://devforum.roblox.com/t/v3-discord-to-roblox-ban-bot-100-free-stable-datastore-support-nodejs/2206142)
 
 
